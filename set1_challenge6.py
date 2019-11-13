@@ -231,7 +231,7 @@ def base642hex(s):
         while len(newBin) < 6:
             newBin = '0' + newBin
         byteList.append(newBin)
-    # print(byteList)
+    print(byteList)
     charList = string.ascii_uppercase + string.ascii_lowercase
     for i in range(10):
         charList += str(i)

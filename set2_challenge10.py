@@ -1,7 +1,7 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from base64 import b64encode, b64decode
-import os, random
+import os, random, string
 
 def PKCS_7_pad(msg, block_size):
     if len(msg) > block_size:
@@ -20,7 +20,7 @@ def PKCS_7_unpad(msg):
     #print('padding_size: %d' % padding_size)
     for i in range(len(msg)-1, len(msg)-padding_size-1, -1):
         if msg[i] != padding_size:
-            print('No Padding')
+            #print('No Padding')
             return msg
     #print('Padding Removed')
     new_msg = msg[:-padding_size]
@@ -99,12 +99,6 @@ def decrypt_aes_cbc(ciphertext, key, iv):
         result += pblocks[i]
     return PKCS_7_unpad(result)
 
-def decrypt_aes_cbc_library(ciphertext, key, iv):
-    backend = default_backend()
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
-    decryptor = cipher.decryptor()
-    msg = decryptor.update(ciphertext) + decryptor.finalize()
-    return msg
 
 
 if __name__ == '__main__':
@@ -116,20 +110,8 @@ if __name__ == '__main__':
         key = os.urandom(16)
         iv = os.urandom(16)
         assert(decrypt_aes_cbc(encrypt_aes_cbc(msg, key, iv), key, iv) == msg)
-        #assert(decrypt_aes_cbc2(encrypt_aes_cbc2(msg, key, iv), key, iv) == msg)
         # This should be working since there are no assertion errors on random msgs
         # with random keys and random ivs
         if not (i*10) % iters:
             x = (i*10) // iters
             print('%d Percent Done' % (x*10))
-    key = b'YELLOW_SUBMARINE'
-    keysize = len(key)
-    iv = b'\x00'*keysize
-    with open('set2_challenge10.txt') as f:
-        text = f.read()
-        ciphertext = b64decode(text)
-        plaintext = decrypt_aes_cbc(ciphertext, key, iv)
-        plaintext2 = decrypt_aes_cbc_library(ciphertext, key, iv)
-        #print("Plaintext: %s" % plaintext)
-        #print("Plaintext2: %s" % plaintext2)
-        print(plaintext==plaintext2) # Comparing my implementation versus the library's
