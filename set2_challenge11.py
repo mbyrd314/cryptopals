@@ -1,7 +1,6 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from base64 import b64encode, b64decode
-from binascii import unhexlify, hexlify
 import os, random, string
 
 def aes_keygen(keysize):
@@ -38,11 +37,11 @@ def encryption_oracle(msg, keysize):
     end_bytes = os.urandom(random.randint(5,10))
     msg = start_bytes + msg + end_bytes
     if random.randint(0,1):
-        print('Encrypting CBC')
+        #print('Encrypting CBC')
         iv = os.urandom(keysize)
         cmsg = encrypt_aes_cbc(msg, key, iv)
     else:
-        print('Encrypting ECB')
+        #print('Encrypting ECB')
         used_ecb = True
         cmsg = encrypt_aes_ecb(msg, key)
     # for start_guess in range(5, 11):
@@ -67,7 +66,8 @@ def encryption_oracle(msg, keysize):
 
 def detect_ecb(msg, keysize):
     """
-    Detects AES ECB mode encryption with a given keysize
+    Detects AES ECB mode encryption with a given keysize. It does this by finding
+    repeated blocks of length keysize in the ciphertext.
 
     Args:
     msg (bytes): Encrypted message to be checked for ECB encryption
@@ -81,8 +81,8 @@ def detect_ecb(msg, keysize):
         return False
     num_blocks = len(msg) // keysize
     blocks = [msg[i*16:(i+1)*16] for i in range(num_blocks)]
-    print(f'len(msg): {len(msg)}, num_blocks: {num_blocks}')
-    print(blocks)
+    #print(f'len(msg): {len(msg)}, num_blocks: {num_blocks}')
+    #print(blocks)
     if len(set(blocks)) != num_blocks: # There is a duplicate block
         return True
     else:
@@ -205,16 +205,27 @@ def encrypt_aes_cbc(plaintext, key, iv):
 # For some reason, the detect_ecb function is not working, even though it is
 # looking for repeated blocks like I did in challenge 8, where it did work.
 if __name__ == '__main__':
-    msg_length = random.randint(1, 5)*48
-    msg = os.urandom(msg_length)
-    print(f'Orig msg: {msg}')
-    msg = b64encode(msg)
-    print(f'Encoded msg: {msg}')
-    iters = 10
+    """
+    The plaintext message that I use for this test is the html source for the
+    Wikipedia page for cryptography. I originally used random messages of up to
+    240 bytes long. These are too short for there to reliably be 16 byte long
+    repeated segments, so there were no repeated blocks in the ciphertext and
+    ECB encryption could not be detected.
+
+    This iterates many times running the encryption oracle function to test if
+    the oracle reliably works.
+    """
+    filename = '11.txt'
+    with open(filename, 'rb') as f:
+        msg = f.read()
+    #print(msg)
+    iters = 10000
     correct_count = 0
     for i in range(iters):
         if encryption_oracle(msg, keysize=16):
             correct_count += 1
+        if not (i*10) % iters:
+            x = (i*10) // iters
+            print('%d Percent Done' % (x*10))
     correct_percentage = correct_count / iters * 100
-    print(f'msg_length: {msg_length}')
     print(f'correct_count: {correct_count}, correct_percentage: {correct_percentage}')
