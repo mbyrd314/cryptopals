@@ -9,9 +9,9 @@ if __name__ == '__main__':
     with open('set1_challenge8.txt') as f:
         lines = f.readlines()
         for i, line in enumerate(lines):
-            #print('line: %s' % line.strip())
-            line = unhexlify(line.strip())
-            #print('decoded line: %s' % line)
+            print('line: %s' % line.strip())
+            line = line.strip()
+            print('decoded line: %s' % line)
             if len(line) % 16:
                 print('Error: line not integer number of blocks')
             else:
