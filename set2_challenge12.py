@@ -31,11 +31,7 @@ def encryption_oracle(msg, key):
 
 def detect_block_size(unknown_string, key):
     """
-    Detects block size used by the unknown string. Not sure if this is really valid
-    since I think it's just always the key size. Since I'm using a 16 byte key,
-    of course I'll get a 16 byte block size. Perhaps this should instead use the
-    method to determine likely block sizes that was used to break repeating key
-    XOR encryption.
+    Detects block size used by the unknown string.
 
     Args:
         key (bytes): Secret key to use for AES ECB encryption
