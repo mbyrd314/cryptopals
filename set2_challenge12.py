@@ -230,5 +230,5 @@ YnkK'''
             if new_ctext[:unknown_size] == ctext:
                 hidden_text += byte
                 break
-    print(f'hidden_text: {hidden_text.decode()}')
+    print(f'hidden_text: {PKCS_7_unpad(hidden_text).decode()}')
     # Successfully determines the unknown string
