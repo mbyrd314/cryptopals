@@ -145,6 +145,23 @@ def encrypt_aes_ecb(plaintext, key):
     cmsg = encryptor.update(msg) + encryptor.finalize()
     return cmsg
 
+def decrypt_aes_ecb(ciphertext, key):
+    """
+    Implementation of AES ECB mode decryption using the Python cryptography library
+
+    Args:
+        ciphertext (bytes): The ciphertext message to be decrypted
+        key (bytes): The AES secret key
+
+    Returns:
+        msg (bytes): The decrypted version of the ciphertext input
+    """
+    backend = default_backend()
+    cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
+    decryptor = cipher.decryptor()
+    msg = decryptor.update(ciphertext) + decryptor.finalize()
+    return msg
+
 
 def xor_bytes(byte1, byte2):
     """
@@ -210,7 +227,10 @@ def detect_random_size(random_prefix, unknown_string, key):
         random_size (int): The size of the random_prefix in bytes
     """
     orig_size = len(encrypt_aes_ecb(random_prefix+unknown_string, key))
-    msg = b'A'*16*5
+    num_cons_blocks = 17
+    # The number 17 here is arbitrary. It is just unlikely that 17 identical blocks
+    # would be consecutive if msg weren't block-aligned
+    msg = b'A'*16*num_cons_blocks
     for prefix_size in range(16):
         prefix = b'C'*prefix_size
         ptext = random_prefix + prefix + msg + unknown_string
@@ -224,13 +244,13 @@ def detect_random_size(random_prefix, unknown_string, key):
         for i, block in enumerate(cblocks):
             if block == prev:
                 block_count += 1
-                # If there were 5 repeating blocks, that means that the random_prefix
+                # If there were num_cons_blocks repeating blocks, that means that the random_prefix
                 # concatenated with my prefix is block aligned. The length of the
                 # random prefix is 16 * idx - prefix_size.
-                if block_count == 5:
-                    print(f'{idx} blocks with prefix {prefix_size}')
+                if block_count == num_cons_blocks:
+                    #print(f'{idx} blocks with prefix {prefix_size}')
                     random_size = 16 * idx - prefix_size
-                    print(f'random_size: {random_size}')
+                    #print(f'random_size: {random_size}')
                     return random_size
             else:
                 prev = block
@@ -245,7 +265,7 @@ if __name__ == '__main__':
 
     This will largely be the same as byte at a  time decryption without the random
     prefix. There is just an additional step of determining the size of the random
-    prefix. 
+    prefix and then padding it to be block aligned.
     """
     random_length = random.randint(1, 16)
     random_prefix = os.urandom(random_length)
@@ -255,11 +275,10 @@ dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
 YnkK'''
     unknown_string = b64decode(unknown_string)
     key = aes_keygen(16)
-    print(f'random_length: {random_length}')
-    print(f'unknown length: {len(unknown_string)}')
     detected_random_length = detect_random_size(random_prefix, unknown_string, key)
+    rand_padding = b'A'*(16-detected_random_length)
     block_size = detect_block_size(unknown_string, key)
-    msg = b'A'*2*block_size # To ensure that there are two repeating blocks
+    msg = random_prefix+b'A'*4*block_size # To ensure that there are two repeating blocks
     msg += unknown_string
     msg = PKCS_7_pad(msg, block_size)
     if detect_ecb(msg, block_size):
@@ -267,19 +286,20 @@ YnkK'''
     else:
         print('ECB not detected')
     # So ECB encryption has been successfully detected.
-    unknown_size = len(encryption_oracle(unknown_string, key))
+    rand_size = len(random_prefix+rand_padding)
+    unknown_size = len(encryption_oracle(random_prefix+rand_padding+unknown_string, key))-rand_size
     prefix = b'A'*(block_size)
-    ctext = encryption_oracle(prefix+unknown_string, key)
-    print(f'unknown_size: {unknown_size}')
     hidden_text = b''
+    rand_size = len(random_prefix+rand_padding)
     for i in range(unknown_size-1, -1, -1):
         prefix = b'A'*i # Number of leading A's decreases every time a new character is deciphered
-        ctext = encryption_oracle(prefix+unknown_string, key)[:unknown_size]
+        ptext = random_prefix+rand_padding+prefix+unknown_string
+        ctext = encryption_oracle(random_prefix+rand_padding+prefix+unknown_string, key)[rand_size:rand_size+unknown_size]
         for j in range(256):
             byte = chr(j).encode()
-            new_text = prefix+hidden_text+byte+unknown_string
-            new_ctext = encryption_oracle(new_text, key)
-            if new_ctext[:unknown_size] == ctext:
+            new_text = random_prefix+rand_padding+prefix+hidden_text+byte+unknown_string
+            new_ctext = encryption_oracle(new_text, key)[rand_size:rand_size+unknown_size]
+            if new_ctext == ctext:
                 hidden_text += byte
                 break
     print(f'hidden_text: {PKCS_7_unpad(hidden_text).decode()}')
