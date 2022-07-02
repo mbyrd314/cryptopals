@@ -14,7 +14,7 @@ def PKCS_7_pad(msg, block_size):
     Returns:
         b_msg (bytes): PKCS padded version of the input message
     """
-    if len(msg) > block_size:
+    if len(msg) >= block_size:
         diff = block_size - len(msg) % block_size
     else:
         diff = block_size - len(msg)
@@ -37,7 +37,7 @@ def PKCS_7_unpad(msg):
                          or the original message if not padded
     """
     padding_size = msg[-1]
-    #print('padding_size: %d' % padding_size)
+    # print('padding_size: %d' % padding_size)
     for i in range(len(msg)-1, len(msg)-padding_size-1, -1):
         if msg[i] != padding_size:
             #print('No Padding')
@@ -182,6 +182,15 @@ def lib_dec_aes_cbc(ciphertext, key, iv):
     msg = decryptor.update(ciphertext) + decryptor.finalize()
     return PKCS_7_unpad(msg)
 
+def lib_enc_aes_cbc(ptext, key, iv):
+    block_size = len(key)
+    msg = PKCS_7_pad(ptext, block_size)
+    backend = default_backend()
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
+    encryptor = cipher.encryptor()
+    msg = encryptor.update(msg) + encryptor.finalize()
+    return msg
+
 
 
 if __name__ == '__main__':
@@ -200,19 +209,95 @@ if __name__ == '__main__':
         key = b'YELLOW SUBMARINE'
         emsg = f.read()
         emsg = b64decode(emsg)
-        #print(emsg)
-        msg = decrypt_aes_cbc(emsg, key, iv)
-        #msg = lib_dec_aes_cbc(emsg, key, iv)
-        print(msg)
+        # print(emsg)
+        my_msg = decrypt_aes_cbc(emsg, key, iv)
+        lib_msg = lib_dec_aes_cbc(emsg, key, iv)
+        # print(f'mine = {my_msg}')
+        # print(f'lib =  {lib_msg}')
+        # print(f'same = {my_msg==lib_msg}')
     # Testing on several random messages of random lengths with random keys and random ivs
-    for i in range(iters):
-        length = random.randint(1000, 10000)
-        msg = os.urandom(length)
-        key = os.urandom(16)
-        iv = os.urandom(16)
-        assert(decrypt_aes_cbc(encrypt_aes_cbc(msg, key, iv), key, iv) == msg)
-        # This should be working since there are no assertion errors on random msgs
-        # with random keys and random ivs
-        if not (i*10) % iters:
-            x = (i*10) // iters
-            print('%d Percent Done' % (x*10))
+    true_count = true_rate = 0
+    false_count = false_rate = 0
+    # for i in range(iters):
+    #     length = random.randint(1000, 10000)
+    #     msg = os.urandom(length)
+    #     key = os.urandom(16)
+    #     iv = os.urandom(16)
+    #     # assert(decrypt_aes_cbc(encrypt_aes_cbc(msg, key, iv), key, iv) == msg)
+    #     if decrypt_aes_cbc(encrypt_aes_cbc(msg, key, iv), key, iv) == msg:
+    #         true_count += 1
+    #     else:
+    #         false_count += 1
+    #         # print(f'')
+    #     # This should be working since there are no assertion errors on random msgs
+    #     # with random keys and random ivs
+    #     if not (i*10) % iters:
+    #         x = (i*100) // iters
+    #         true_rate = true_count / iters * 100
+    #         false_rate = false_count / iters * 100
+    #         print(f'{x}% Done. True rate = {true_rate}, False rate = {false_rate}')
+    # true_rate = true_count / iters * 100
+    # false_rate = false_count / iters * 100
+    # print(f'Complete: {iters} iterations successful. True rate = {true_rate}, False rate = {false_rate}')
+    # enc_same = enc_rate = 0
+    # dec_same = dec_rate = 0
+    # my_idemp = my_rate = 0
+    # lib_idemp = lib_rate = 0
+    # for i in range(iters):
+    #     length = random.randint(1000, 10000)
+    #     msg = os.urandom(length)
+    #     key = os.urandom(16)
+    #     iv = os.urandom(16)
+    #     my_enc = encrypt_aes_cbc(msg, key, iv)
+    #     lib_enc = lib_enc_aes_cbc(msg, key, iv)
+    #     my_dec = decrypt_aes_cbc(my_enc, key, iv)
+    #     lib_dec = lib_dec_aes_cbc(lib_enc, key, iv)
+    #     if my_enc == lib_enc:
+    #         enc_same += 1
+    #     if my_dec == lib_dec:
+    #         dec_same += 1
+    #     if my_dec == msg:
+    #         my_idemp += 1
+    #     if lib_dec == msg:
+    #         lib_idemp += 1
+    #     if ((i+1)*10) % iters == 0:
+    #         x = ((i+1)*100) // iters
+    #         enc_true_rate = enc_same / iters * 100
+    #         enc_false_rate = ((i-enc_same) / iters) * 100
+    #         dec_true_rate = dec_same / iters * 100
+    #         dec_false_rate = ((i-dec_same) / iters) * 100
+    #         my_idemp_true_rate = my_idemp / iters * 100
+    #         my_idemp_false_rate = ((i-my_idemp) / iters) * 100
+    #         lib_idemp_true_rate = lib_idemp / iters * 100
+    #         lib_idemp_false_rate = ((i-lib_idemp) / iters) * 100
+    #         print(f'{x}% Done! Enc: {enc_true_rate}% True / {enc_false_rate}% False, Dec: {dec_true_rate}% True / {dec_false_rate}% False')
+    #         print(f'Idemp: {my_idemp_true_rate}% True / {my_idemp_false_rate}% False, Lib: {lib_idemp_true_rate}% True / {lib_idemp_false_rate}% False')
+    # enc_true_rate = enc_same / iters * 100
+    # enc_false_rate = (1-(enc_same / iters)) * 100
+    # dec_true_rate = dec_same / iters * 100
+    # dec_false_rate = (1-(dec_same / iters)) * 100
+    # my_idemp_true_rate = my_idemp / iters * 100
+    # my_idemp_false_rate = (1-(my_idemp / iters)) * 100
+    # lib_idemp_true_rate = lib_idemp / iters * 100
+    # lib_idemp_false_rate = (1-(lib_idemp / iters)) * 100
+    # print(f'100% Done! Enc: {enc_true_rate}% True / {enc_false_rate}% False, Dec: {dec_true_rate}% True / {dec_false_rate}% False')
+    # print(f'Idemp: {my_idemp_true_rate}% True / {my_idemp_false_rate}% False, Lib: {lib_idemp_true_rate}% True / {lib_idemp_false_rate}% False')
+    key = b'YELLOW SUBMARINE'
+    iv = key
+    phrase = b'YELLOW SUBMARINE'
+    p_cookie = encrypt_aes_cbc(phrase, key, iv)
+    lib_cookie = lib_enc_aes_cbc(phrase, key, iv)
+    print(f'mine: {p_cookie}')
+    print(f'lib:  {lib_cookie}')
+    # if padding_oracle(p_cookie, key, iv):
+    #     print(f'Cookie was padded correctly')
+    # else:
+    #     print(f'Cookie was somehow not padded correctly')
+    # if padding_oracle(lib_cookie, key, iv):
+    #     print(f'Lib cookie was padded correctly')
+    # else:
+    #     print(f'Lib cookie was somehow not padded correctly')
+    lib_phrase = lib_dec_aes_cbc(p_cookie, key, iv)
+    print(f'lib_phrase = {lib_phrase}')
+    d_phrase = decrypt_aes_cbc(p_cookie, key, iv)
+    print(f'd_phrase = {d_phrase}')

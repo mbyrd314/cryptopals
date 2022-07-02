@@ -237,7 +237,7 @@ def base642hex(s):
         charList += str(i)
     charList += '+/'
     charList = list(charList)
-    # print(charList)
+    #print(f'charList: {charList}, byteList: {byteList}')
     # print([key for key in byteList])
     # print([value for value in charList])
     #charDic = {key:value for key in byteList for value in charList}
@@ -311,7 +311,74 @@ def dec_rep_key_xor(cyphertext):
                 ans += msg[i]
     return ans
 
+def hex_from_text(cyphertext):
+    ans = ''
+    byteList = []
+    for i in range(16):
+        newBin = format(i, 'b')
+        while len(newBin) < 4:
+            newBin = '0' + newBin
+        byteList.append(newBin)
+    charList = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
+    charDic = dict(zip(charList, byteList))
+    for c in cyphertext:
+        ans += charDic[c]
+    print(f'cyphertext: {cyphertext}')
+    print(f'ans: {ans}')
+    return ans
 
+def dec_rep_key_xor2(cyphertext):
+    #cypherbytes = base642hex(cyphertext)
+    cypherbytes = hex_from_text(cyphertext)
+    #keysizes = find_keysize(cypherbytes)
+    keysizes = [6]
+    print('keysizes: %s' % str(keysizes))
+    l = len(cypherbytes)
+    best_block_sum = 0
+    for keysize in keysizes:
+        blocks = split_blocks(get_blocks(cypherbytes, keysize), keysize)
+        ans = ''
+        block_sum = 0
+        keys = []
+        msgs = []
+        for block in blocks:
+            #print('Block: %s' % str(block))
+            #print('Length: %d' % len(block))
+            total, key, msg = dec_single_byte_xor(block)
+            block_sum += total
+            keys.append(key)
+            msgs.append(msg)
+        # for i in range(len(msgs[0])):
+        #     for msg in msgs:
+        #         ans+=msg[i]
+        full_key = ''.join([chr(key) for key in keys])
+        full_msg = ''.join(msgs)
+        print('keysize: %d, block_sum: %d, key: %s' % (keysize, block_sum, full_key))
+        #print('msg: %s' % full_msg)
+
+        if block_sum > best_block_sum:
+            best_block_sum = block_sum
+            best_keys = keys
+            best_keysize = keysize
+            best_msgs = msgs
+    best_chars = ''.join([chr(key) for key in best_keys])
+    best_block_size = l // best_keysize
+    # print(type(l))
+    # print(type(best_keysize))
+    #print('cyphertext: %s' % cyphertext)
+    print('best_keysize: %d' % best_keysize)
+    # print(type(l))
+    # print(type(best_keysize))
+    print('best_block_size: %d' % best_block_size)
+    print('l: %d' % l)
+    print('best_keys: %s' % str(best_keys))
+    print('best_chars: %s' % str(best_chars))
+    #print('best_msgs: %s' % str(best_msgs))
+    for i in range(len(best_msgs[0])):
+        for msg in best_msgs:
+            if i < len(msg):
+                ans += msg[i]
+    return ans
 
 
 if __name__ == '__main__':
@@ -346,5 +413,8 @@ if __name__ == '__main__':
         if i % 60:
             new_ans += '\n'
         new_ans += ans[i]
+    text2 = "7a032c24051f5c1e610713025c02223150024a4c2f3b5006561e24741109561935741304541c342015194a4c353c1105190d3220020457032c2d50024a4c20361f1e4d4c35311c0e4a0f2e24151817"
+    ans2 = dec_rep_key_xor2(text2)
+    print(f'ans2: {ans2}')
     with open(outfile, 'w') as f:
         f.write(new_ans)
